@@ -2043,7 +2043,7 @@ def easyphoto_infer_forward(
                 grid=True,
                 p=None,
             )
-            fullfn = fullfn[len(data_path):]
+            fullfn = fullfn[len(data_path+"/"):]
             outputs_url.append(fullfn)
             if loop_message != "":
                 loop_message += "\n"
