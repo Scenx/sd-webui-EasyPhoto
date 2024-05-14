@@ -230,7 +230,7 @@ def easyphoto_infer_forward_api(_: gr.Blocks, app: FastAPI):
 
         tabs = int(tabs)
         try:
-            comment, outputs, face_id_outputs = easyphoto_infer_forward(
+            comment, outputs, face_id_outputs, outputs_url = easyphoto_infer_forward(
                 sd_model_checkpoint,
                 selected_template_images,
                 init_image,
@@ -285,7 +285,8 @@ def easyphoto_infer_forward_api(_: gr.Blocks, app: FastAPI):
                 enable_second_diffusion,
                 *user_ids,
             )
-            outputs = [api.encode_pil_to_base64(output) for output in outputs]
+            # outputs = [api.encode_pil_to_base64(output) for output in outputs]
+            outputs = outputs_url
             face_id_outputs_base64 = []
             # if len(face_id_outputs) != 0:
             #     for item in face_id_outputs:

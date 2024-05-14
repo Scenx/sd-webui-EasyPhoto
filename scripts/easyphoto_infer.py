@@ -1183,7 +1183,7 @@ def easyphoto_infer_forward(
             if instantid_control:
                 instantid_images.append(instantid_image)
 
-    outputs, face_id_outputs = [], []
+    outputs, face_id_outputs, outputs_url = [], [], []
     loop_message = ""
     for template_idx, template_image in enumerate(template_images):
         template_idx_info = f"""
@@ -2030,7 +2030,7 @@ def easyphoto_infer_forward(
             outputs.append(output_image)
             if loractl_flag:
                 outputs.append(lora_weight_image)
-            save_image(
+            fullfn, _ = save_image(
                 output_image,
                 easyphoto_outpath_samples,
                 "EasyPhoto",
@@ -2042,7 +2042,7 @@ def easyphoto_infer_forward(
                 grid=True,
                 p=None,
             )
-
+            outputs_url.append(fullfn)
             if loop_message != "":
                 loop_message += "\n"
             loop_message += f"Template {str(template_idx + 1)} Success."
@@ -2055,7 +2055,7 @@ def easyphoto_infer_forward(
                 loop_message += "\n"
             loop_message += f"Template {str(template_idx + 1)} error: Error info is {e}."
 
-    return loop_message, outputs, face_id_outputs
+    return loop_message, outputs, face_id_outputs, outputs_url
 
 
 @switch_sd_model_vae()
