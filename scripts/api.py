@@ -287,11 +287,11 @@ def easyphoto_infer_forward_api(_: gr.Blocks, app: FastAPI):
             )
             outputs = [api.encode_pil_to_base64(output) for output in outputs]
             face_id_outputs_base64 = []
-            if len(face_id_outputs) != 0:
-                for item in face_id_outputs:
-                    pil_base64 = api.encode_pil_to_base64(item[0])
-                    score_base64 = base64.b64encode(item[1].encode("utf-8")).decode("utf-8")
-                    face_id_outputs_base64.append((pil_base64, score_base64))
+            # if len(face_id_outputs) != 0:
+            #     for item in face_id_outputs:
+            #         pil_base64 = api.encode_pil_to_base64(item[0])
+            #         score_base64 = base64.b64encode(item[1].encode("utf-8")).decode("utf-8")
+            #         face_id_outputs_base64.append((pil_base64, score_base64))
         except Exception as e:
             torch.cuda.empty_cache()
             comment = f"Infer error, error info:{str(e)}"
