@@ -65,6 +65,7 @@ from scripts.sdwebui import (
     reload_sd_model_vae,
     switch_sd_model_vae,
     t2i_call,
+    get_control_mode,
 )
 
 
@@ -98,9 +99,11 @@ def get_controlnet_unit(
     resize_mode: str = "Just Resize",
     is_batch: bool = False,
 ):  # Any should be replaced with a more specific image type  # Default to False, assuming single image input by default
+    control_mode = get_control_mode(control_mode)
+
     if unit == "canny":
         control_unit = dict(
-            input_image=None,
+            image=None,
             module="canny",
             weight=weight,
             guidance_end=1,
@@ -113,7 +116,7 @@ def get_controlnet_unit(
 
     elif unit == "sdxl_canny_mid":
         control_unit = dict(
-            input_image={"image": np.asarray(input_image), "mask": None},
+            image=None,
             module="canny",
             weight=weight,
             guidance_end=1,
@@ -149,7 +152,7 @@ def get_controlnet_unit(
 
     elif unit == "sdxl_openpose_lora":
         control_unit = dict(
-            input_image={"image": np.asarray(input_image), "mask": None},
+            image=None,
             module="openpose_full",
             weight=weight,
             guidance_end=1,
@@ -161,7 +164,7 @@ def get_controlnet_unit(
 
     elif unit == "color":
         control_unit = dict(
-            input_image=None,
+            image=None,
             module="none",
             weight=weight,
             guidance_end=1,
@@ -199,11 +202,11 @@ def get_controlnet_unit(
             color_image = cv2.resize(color_image, (w, h), interpolation=cv2.INTER_CUBIC)
             color_image = Image.fromarray(np.uint8(color_image))
 
-            control_unit["input_image"] = {"image": np.asarray(color_image), "mask": None}
+            control_unit["image"] = np.uint8(color_image)
 
     elif unit == "tile":
         control_unit = dict(
-            input_image=None,
+            image=None,
             module="tile_resample",
             weight=weight,
             guidance_end=1,
@@ -216,7 +219,7 @@ def get_controlnet_unit(
 
     elif unit == "ipa_full_face":
         control_unit = dict(
-            input_image=None,
+            image=None,
             module="ip-adapter_clip_sd15",
             weight=weight,
             guidance_end=1,
@@ -226,7 +229,7 @@ def get_controlnet_unit(
         )
     elif unit == "ipa_sdxl_plus_face":
         control_unit = dict(
-            input_image={"image": np.asarray(input_image), "mask": None},
+            image=None,
             module="ip-adapter_clip_sdxl_plus_vith",
             weight=weight,
             guidance_end=1,
@@ -236,7 +239,7 @@ def get_controlnet_unit(
         )
     elif unit == "instantid_sdxl_face_embedding":
         control_unit = dict(
-            input_image={"image": np.asarray(input_image), "mask": None},
+            image=None,
             module="instant_id_face_embedding",
             weight=weight,
             guidance_end=1,
@@ -247,7 +250,7 @@ def get_controlnet_unit(
         )
     elif unit == "instantid_sdxl_face_keypoints":
         control_unit = dict(
-            input_image={"image": np.asarray(input_image), "mask": None},
+            image=None,
             module="instant_id_face_keypoints",
             weight=weight,
             guidance_end=1,
@@ -258,7 +261,7 @@ def get_controlnet_unit(
         )
     elif unit == "depth":
         control_unit = dict(
-            input_image=input_image,
+            image=None,
             module="depth_midas",
             weight=weight,
             guidance_end=1,
@@ -269,7 +272,7 @@ def get_controlnet_unit(
 
     elif unit == "ipa":
         control_unit = dict(
-            input_image=input_image,
+            image=None,
             module="ip-adapter_clip_sd15",
             weight=weight,
             guidance_end=1,
@@ -280,7 +283,7 @@ def get_controlnet_unit(
 
     elif unit == "canny_no_pre":
         control_unit = dict(
-            input_image=input_image,
+            image=None,
             module=None,
             weight=weight,
             guidance_end=1,
@@ -291,14 +294,11 @@ def get_controlnet_unit(
             model="control_v11p_sd15_canny",
         )
 
-    if unit != "color" and not unit.startswith("sdxl"):
+    if unit != "color":
         if is_batch:
             control_unit["batch_images"] = [np.array(_input_image, np.uint8) for _input_image in input_image]
         else:
-            control_unit["input_image"] = {
-                "image": np.asarray(input_image),
-                "mask": None,
-            }
+            control_unit["image"] = np.array(input_image, np.uint8)
 
     return control_unit
 
@@ -445,6 +445,7 @@ def easyphoto_infer_forward(
     scene_id,
     prompt_generate_sd_model_checkpoint,
     additional_prompt,
+    additional_neg_prompt,
     lora_weights,
     before_face_fusion_ratio,
     after_face_fusion_ratio,
@@ -964,7 +965,7 @@ def easyphoto_infer_forward(
                 width=text_to_image_width,
                 height=text_to_image_height,
                 default_positive_prompt=DEFAULT_POSITIVE_T2I,
-                default_negative_prompt=DEFAULT_NEGATIVE_T2I,
+                default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE_T2I,
                 seed=seed,
                 sampler=sampler,
             )
@@ -980,7 +981,7 @@ def easyphoto_infer_forward(
                     denoising_strength=0.20,
                     hr_scale=1.5,
                     default_positive_prompt=DEFAULT_POSITIVE_T2I,
-                    default_negative_prompt=DEFAULT_NEGATIVE_T2I,
+                    default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE_T2I,
                     seed=seed,
                     sampler=sampler,
                 )
@@ -1014,7 +1015,7 @@ def easyphoto_infer_forward(
                 width=text_to_image_width,
                 height=text_to_image_height,
                 default_positive_prompt=DEFAULT_POSITIVE_T2I,
-                default_negative_prompt=DEFAULT_NEGATIVE_T2I,
+                default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE_T2I,
                 seed=seed,
                 sampler=sampler,
             )
@@ -1530,6 +1531,7 @@ def easyphoto_infer_forward(
                         input_prompt=input_prompts[index],
                         hr_scale=1.0,
                         seed=seed,
+                        default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE,
                         sampler=sampler,
                         loractl_flag=loractl_flag,
                     )
@@ -1571,6 +1573,7 @@ def easyphoto_infer_forward(
                         input_prompt=input_prompts[index],
                         hr_scale=1.0,
                         seed=seed,
+                        default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE,
                         sampler=sampler,
                     )
                     if loractl_flag:
@@ -1732,6 +1735,7 @@ def easyphoto_infer_forward(
                         denoising_strength=second_denoising_strength,
                         hr_scale=default_hr_scale,
                         seed=seed,
+                        default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE,
                         sampler=sampler,
                     )
                     second_diffusion_output_image = second_diffusion_output_image[0]
@@ -1942,6 +1946,7 @@ def easyphoto_infer_forward(
                             denoising_strength=denoising_strength,
                             hr_scale=1,
                             seed=seed,
+                            default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE,
                             sampler="DPM++ 2M SDE Karras" if not lcm_accelerate else "Euler a",
                         )
                         sub_output_image = sub_output_image[0]
@@ -1976,6 +1981,7 @@ def easyphoto_infer_forward(
                             denoising_strength=denoising_strength,
                             hr_scale=1,
                             seed=seed,
+                            default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE,
                             sampler="DPM++ 2M SDE Karras" if not lcm_accelerate else "Euler a",
                         )
                         output_image = output_image[0]
@@ -2079,6 +2085,7 @@ def easyphoto_video_infer_forward(
     i2v_denoising_strength,
     init_video,
     additional_prompt,
+    additional_neg_prompt,
     lora_weights,
     max_frames,
     max_fps,
@@ -2369,7 +2376,7 @@ def easyphoto_video_infer_forward(
                 width=new_size[0],
                 height=new_size[1],
                 default_positive_prompt=DEFAULT_POSITIVE_AD,
-                default_negative_prompt=DEFAULT_NEGATIVE_AD,
+                default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE_AD,
                 seed=seed,
                 sampler="DPM++ 2M SDE Karras" if not lcm_accelerate else "Euler a",
                 animatediff_flag=True,
@@ -2385,7 +2392,7 @@ def easyphoto_video_infer_forward(
                 width=t2v_input_width,
                 height=t2v_input_height,
                 default_positive_prompt=DEFAULT_POSITIVE_AD,
-                default_negative_prompt=DEFAULT_NEGATIVE_AD,
+                default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE_AD,
                 seed=seed,
                 sampler="DPM++ 2M SDE Karras" if not lcm_accelerate else "Euler a",
                 animatediff_flag=True,
@@ -2420,7 +2427,7 @@ def easyphoto_video_infer_forward(
             denoising_strength=i2v_denoising_strength,
             hr_scale=1,
             default_positive_prompt=DEFAULT_POSITIVE_AD,
-            default_negative_prompt=DEFAULT_NEGATIVE_AD,
+            default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE_AD,
             seed=seed,
             sampler="DPM++ 2M SDE Karras" if not lcm_accelerate else "Euler a",
             animatediff_flag=True,
@@ -2823,7 +2830,7 @@ def easyphoto_video_infer_forward(
                 seed=seed,
                 sd_model_checkpoint=sd_model_checkpoint,
                 default_positive_prompt=DEFAULT_POSITIVE_AD,
-                default_negative_prompt=DEFAULT_NEGATIVE_AD,
+                default_negative_prompt=additional_neg_prompt + ", " + DEFAULT_NEGATIVE_AD,
                 sampler="DPM++ 2M SDE Karras" if not lcm_accelerate else "Euler a",
                 animatediff_flag=True,
                 animatediff_fps=int(actual_fps),
